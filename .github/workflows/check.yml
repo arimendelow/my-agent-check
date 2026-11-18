@@ -1,0 +1,38 @@
+name: starter runs on every reader's shell
+on: [push, workflow_dispatch]
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        node: ['22.18.0', '22']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: install the starter's one package
+        working-directory: starter
+        run: npm ci
+      - name: fake gh (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force fakebin | Out-Null
+          Add-Type -TypeDefinition (Get-Content check/Gh.cs -Raw) -OutputAssembly fakebin/gh.exe -OutputType ConsoleApplication
+          "$PWD\fakebin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: fake gh (macOS, Linux)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p fakebin && cp check/gh fakebin/gh
+          echo "$PWD/fakebin" >> "$GITHUB_PATH"
+      - name: run the agent against a fake model
+        working-directory: starter
+        shell: bash
+        run: |
+          node ../check/fake-model.mjs &
+          sleep 1
+          gh auth token
+          node ../check/run.mjs

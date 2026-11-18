@@ -1,0 +1,7 @@
+#!/bin/sh
+# A stand-in gh: hands the agent a fake key and the fake model's address.
+case "$*" in
+  "auth token"*) echo fake-token ;;
+  api*) echo http://127.0.0.1:8765 ;;
+  *) echo "fake gh: unexpected $*" >&2; exit 1 ;;
+esac
